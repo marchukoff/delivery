@@ -88,13 +88,13 @@ func (sp *StoragePlace) CanStore(volume int) (bool, error) {
 	return !sp.IsOccupied() && sp.totalVolume >= volume, nil
 }
 
-func (sp *StoragePlace) Store(orederID uuid.UUID, volume int) error {
+func (sp *StoragePlace) Store(orderID uuid.UUID, volume int) error {
 	if sp == nil {
 		return ErrStoragePlaceNotInitialized
 	}
 
-	if orederID == uuid.Nil {
-		return errs.NewValueIsInvalidError("orederID")
+	if orderID == uuid.Nil {
+		return errs.NewValueIsInvalidError("orderID")
 	}
 
 	if volume <= 0 {
@@ -109,17 +109,17 @@ func (sp *StoragePlace) Store(orederID uuid.UUID, volume int) error {
 		return errs.NewValueIsOutOfRangeError("volume", volume, 1, sp.totalVolume)
 	}
 
-	sp.orderID = &orederID
+	sp.orderID = &orderID
 	return nil
 }
 
-func (sp *StoragePlace) Clear(orederID uuid.UUID) error {
+func (sp *StoragePlace) Clear(orderID uuid.UUID) error {
 	if sp == nil {
 		return ErrStoragePlaceNotInitialized
 	}
 
-	if sp.orderID == nil || *sp.orderID != orederID {
-		return errs.NewObjectNotFoundError("orederID", orederID)
+	if sp.orderID == nil || *sp.orderID != orderID {
+		return errs.NewObjectNotFoundError("orderID", orderID)
 	}
 
 	sp.orderID = nil

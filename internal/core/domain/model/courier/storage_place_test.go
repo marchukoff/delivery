@@ -51,41 +51,41 @@ func TestStoragePlace_Store(t *testing.T) {
 	tests := []struct {
 		name     string
 		place    *StoragePlace
-		orederID uuid.UUID
+		orderID uuid.UUID
 		volume   int
 		want     error
 	}{
 		{
 			name:     "good",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
-			orederID: uuid.New(),
+			orderID: uuid.New(),
 			volume:   1,
 			want:     nil,
 		},
 		{
 			name:     "bad nil StoragePlace",
-			orederID: uuid.New(),
+			orderID: uuid.New(),
 			volume:   1,
 			want:     ErrStoragePlaceNotInitialized,
 		},
 		{
 			name:     "bad overweight",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 1); return x }(),
-			orederID: uuid.New(),
+			orderID: uuid.New(),
 			volume:   10,
 			want:     errs.ErrValueIsOutOfRange,
 		},
 		{
 			name:     "bad order uuid",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
-			orederID: uuid.Nil,
+			orderID: uuid.Nil,
 			volume:   1,
 			want:     errs.ErrValueIsInvalid,
 		},
 		{
 			name:     "bad occupied",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(uuid.New(), 1); return x }(),
-			orederID: uuid.New(),
+			orderID: uuid.New(),
 			volume:   10,
 			want:     ErrStoragePlaceIsOccupied,
 		},
@@ -94,7 +94,7 @@ func TestStoragePlace_Store(t *testing.T) {
 	assert := assert.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.place.Store(tt.orederID, tt.volume); err != nil {
+			if err := tt.place.Store(tt.orderID, tt.volume); err != nil {
 				assert.ErrorIs(err, tt.want)
 			} else {
 				assert.NotEmpty(tt.place.OrderID())
@@ -192,31 +192,31 @@ func TestStoragePlace_Clear(t *testing.T) {
 	tests := []struct {
 		name     string
 		place    *StoragePlace
-		orederID uuid.UUID
+		orderID uuid.UUID
 		want     error
 	}{
 		{
 			name:     "good",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
-			orederID: id,
+			orderID: id,
 			want:     nil,
 		},
 		{
 			name:     "bad not found",
 			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
-			orederID: uuid.New(),
+			orderID: uuid.New(),
 			want:     errs.ErrObjectNotFound,
 		},
 		{
 			name:     "bad place",
 			place:    new(StoragePlace),
-			orederID: id,
+			orderID: id,
 			want:     errs.ErrObjectNotFound,
 		},
 		{
 			name:     "bad nil place",
 			place:    nil,
-			orederID: id,
+			orderID: id,
 			want:     ErrStoragePlaceNotInitialized,
 		},
 	}
@@ -224,11 +224,11 @@ func TestStoragePlace_Clear(t *testing.T) {
 	assert := assert.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.place.Clear(tt.orederID); err != nil {
+			if err := tt.place.Clear(tt.orderID); err != nil {
 				assert.ErrorIs(err, tt.want)
 			} else {
 				assert.Empty(tt.place.OrderID())
-				assert.NoError(tt.place.Store(tt.orederID, 1))
+				assert.NoError(tt.place.Store(tt.orderID, 1))
 			}
 		})
 	}
