@@ -36,6 +36,20 @@ func NewStoragePlace(name string, totalVolume int) (*StoragePlace, error) {
 	return &StoragePlace{id: uuid.New(), name: name, totalVolume: totalVolume}, nil
 }
 
+func NewBag() *StoragePlace {
+	const (
+		name   = "Сумка"
+		volume = 10
+	)
+
+	bag, err := NewStoragePlace(name, volume)
+	if err != nil {
+		panic(err)
+	}
+
+	return bag
+}
+
 func (sp *StoragePlace) Equals(other *StoragePlace) bool {
 	if sp == nil || other == nil || sp.id == uuid.Nil || other.id == uuid.Nil {
 		return false
