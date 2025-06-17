@@ -123,6 +123,12 @@ func TestOrder_Assign(t *testing.T) {
 		{
 			name:      "bad not initialized order",
 			courierID: uuid.New(),
+			order:     new(Order),
+			want:      errs.ErrExpectationFailed,
+		},
+		{
+			name:      "bad nil order",
+			courierID: uuid.New(),
 			want:      ErrOrderNotInitialized,
 		},
 	}
@@ -167,8 +173,13 @@ func TestOrder_Complete(t *testing.T) {
 			want: errs.ErrExpectationFailed,
 		},
 		{
-			name: "bad order not initialized",
+			name: "bad nil order",
 			want: ErrOrderNotInitialized,
+		},
+		{
+			name:  "bad order not initialized",
+			order: new(Order),
+			want:  errs.ErrExpectationFailed,
 		},
 	}
 

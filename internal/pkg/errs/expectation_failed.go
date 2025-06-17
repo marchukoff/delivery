@@ -40,10 +40,10 @@ func (e *ExpectationFailedError) Error() string {
 
 	if e.Cause != nil {
 		return fmt.Sprintf("%s: %s got: %v, want: %s (cause: %v)",
-			ErrExpectationFailed, sanitize(e.Got), e.ParamName, strings.Join(want, ", "), e.Cause)
+			ErrExpectationFailed, e.ParamName, sanitize(e.Got), strings.Join(want, ", "), e.Cause)
 	}
 	return fmt.Sprintf("%s: %s got: %v, want: %s",
-		ErrExpectationFailed, sanitize(e.Got), e.ParamName, strings.Join(want, ", "))
+		ErrExpectationFailed, e.ParamName, sanitize(e.Got), strings.Join(want, ", "))
 }
 
 func (e *ExpectationFailedError) Unwrap() error {
