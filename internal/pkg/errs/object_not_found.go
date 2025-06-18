@@ -13,7 +13,7 @@ type ObjectNotFoundError struct {
 	Cause     error
 }
 
-func NewObjectNotFoundErrorWithCause(paramName string, ID string, cause error) *ObjectNotFoundError {
+func NewObjectNotFoundErrorWithCause(paramName string, ID any, cause error) *ObjectNotFoundError {
 	return &ObjectNotFoundError{
 		ParamName: paramName,
 		ID:        ID,
@@ -30,10 +30,10 @@ func NewObjectNotFoundError(paramName string, ID any) *ObjectNotFoundError {
 
 func (e *ObjectNotFoundError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("%s: param is: %s, ID is: %s (cause: %v)",
+		return fmt.Sprintf("%s: param is: %s, ID is: %v (cause: %v)",
 			ErrObjectNotFound, e.ParamName, e.ID, e.Cause)
 	}
-	return fmt.Sprintf("%s: %s", ErrObjectNotFound, e.ID)
+	return fmt.Sprintf("%s: param is: %s, ID is: %v", ErrObjectNotFound, e.ParamName, e.ID)
 }
 
 func (e *ObjectNotFoundError) Unwrap() error {

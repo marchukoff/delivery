@@ -49,45 +49,45 @@ func TestNewStoragePlace(t *testing.T) {
 
 func TestStoragePlace_Store(t *testing.T) {
 	tests := []struct {
-		name     string
-		place    *StoragePlace
+		name    string
+		place   *StoragePlace
 		orderID uuid.UUID
-		volume   int
-		want     error
+		volume  int
+		want    error
 	}{
 		{
-			name:     "good",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
+			name:    "good",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
 			orderID: uuid.New(),
-			volume:   1,
-			want:     nil,
+			volume:  1,
+			want:    nil,
 		},
 		{
-			name:     "bad nil StoragePlace",
+			name:    "bad nil StoragePlace",
 			orderID: uuid.New(),
-			volume:   1,
-			want:     ErrStoragePlaceNotInitialized,
+			volume:  1,
+			want:    ErrStoragePlaceNotInitialized,
 		},
 		{
-			name:     "bad overweight",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 1); return x }(),
+			name:    "bad overweight",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 1); return x }(),
 			orderID: uuid.New(),
-			volume:   10,
-			want:     errs.ErrValueIsOutOfRange,
+			volume:  10,
+			want:    errs.ErrValueIsOutOfRange,
 		},
 		{
-			name:     "bad order uuid",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
+			name:    "bad order uuid",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); return x }(),
 			orderID: uuid.Nil,
-			volume:   1,
-			want:     errs.ErrValueIsInvalid,
+			volume:  1,
+			want:    errs.ErrValueIsInvalid,
 		},
 		{
-			name:     "bad occupied",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(uuid.New(), 1); return x }(),
+			name:    "bad occupied",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(uuid.New(), 1); return x }(),
 			orderID: uuid.New(),
-			volume:   10,
-			want:     ErrStoragePlaceIsOccupied,
+			volume:  10,
+			want:    ErrStoragePlaceIsOccupied,
 		},
 	}
 
@@ -190,34 +190,34 @@ func TestStoragePlace_CanStore(t *testing.T) {
 func TestStoragePlace_Clear(t *testing.T) {
 	id := uuid.New()
 	tests := []struct {
-		name     string
-		place    *StoragePlace
+		name    string
+		place   *StoragePlace
 		orderID uuid.UUID
-		want     error
+		want    error
 	}{
 		{
-			name:     "good",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
+			name:    "good",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
 			orderID: id,
-			want:     nil,
+			want:    nil,
 		},
 		{
-			name:     "bad not found",
-			place:    func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
+			name:    "bad not found",
+			place:   func() *StoragePlace { x, _ := NewStoragePlace("bag", 10); x.Store(id, 1); return x }(),
 			orderID: uuid.New(),
-			want:     errs.ErrObjectNotFound,
+			want:    errs.ErrObjectNotFound,
 		},
 		{
-			name:     "bad place",
-			place:    new(StoragePlace),
+			name:    "bad place",
+			place:   new(StoragePlace),
 			orderID: id,
-			want:     errs.ErrObjectNotFound,
+			want:    errs.ErrObjectNotFound,
 		},
 		{
-			name:     "bad nil place",
-			place:    nil,
+			name:    "bad nil place",
+			place:   nil,
 			orderID: id,
-			want:     ErrStoragePlaceNotInitialized,
+			want:    ErrStoragePlaceNotInitialized,
 		},
 	}
 
