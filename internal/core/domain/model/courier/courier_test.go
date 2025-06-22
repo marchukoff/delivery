@@ -287,7 +287,6 @@ func TestCourier_TakeOrder(t *testing.T) {
 					}
 					return ids
 				}(), tt.order.ID())
-				assert.Equal(tt.courier.ID(), *tt.order.CourierID())
 			}
 		})
 	}
@@ -311,6 +310,8 @@ func TestCourier_CompleteOrder(t *testing.T) {
 				c, err := NewCourier("test", 1, kernel.NewRandomLocation())
 				assert.NoError(err)
 				err = c.TakeOrder(one)
+				assert.NoError(err)
+				err = one.Assign(c.ID())
 				assert.NoError(err)
 				return c
 			}(),

@@ -156,12 +156,7 @@ func (c *Courier) TakeOrder(order *order.Order) error {
 		}
 
 		if can {
-			err = sp.Store(order.ID(), order.Volume())
-			if err != nil {
-				return err
-			}
-
-			return order.Assign(c.ID())
+			return sp.Store(order.ID(), order.Volume())
 		}
 	}
 

@@ -45,8 +45,13 @@ func (o *orderDispatcher) Dispatch(ordering *order.Order, couriers []*courier.Co
 	}
 
 	if index >= 0 {
-		err := couriers[index].TakeOrder(ordering)
+		courier := couriers[index]
+		err := courier.TakeOrder(ordering)
 		if err != nil {
+			return nil, errors.Join(ErrCantAssignOrder, err)
+		}
+
+		if err = ordering.Assign(courier.ID()); err != nil {
 			return nil, errors.Join(ErrCantAssignOrder, err)
 		}
 
