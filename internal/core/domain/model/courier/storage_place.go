@@ -36,6 +36,20 @@ func NewStoragePlace(name string, totalVolume int) (*StoragePlace, error) {
 	return &StoragePlace{id: uuid.New(), name: name, totalVolume: totalVolume}, nil
 }
 
+func RestoreStoragePlace(id uuid.UUID, name string, totalVolume int, orderID uuid.UUID) *StoragePlace {
+	oid := &orderID
+	if orderID == uuid.Nil {
+		oid = nil
+	}
+
+	return &StoragePlace{
+		id:          id,
+		name:        name,
+		totalVolume: totalVolume,
+		orderID:     oid,
+	}
+}
+
 func NewBag() *StoragePlace {
 	const (
 		name   = "Сумка"
