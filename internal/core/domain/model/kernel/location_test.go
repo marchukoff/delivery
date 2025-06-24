@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	. "delivery/internal/core/domain/kernel"
+	. "delivery/internal/core/domain/model/kernel"
 	"delivery/internal/pkg/errs"
 )
 

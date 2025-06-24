@@ -3,7 +3,7 @@ package order_test
 import (
 	"testing"
 
-	"delivery/internal/core/domain/kernel"
+	"delivery/internal/core/domain/model/kernel"
 	. "delivery/internal/core/domain/model/order"
 	"delivery/internal/pkg/errs"
 
