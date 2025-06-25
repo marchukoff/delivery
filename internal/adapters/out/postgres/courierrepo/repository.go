@@ -2,36 +2,20 @@ package courierrepo
 
 import (
 	"context"
+
 	"delivery/internal/core/domain/model/courier"
 	"delivery/internal/core/ports"
 	"delivery/internal/pkg/errs"
+
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var _ ports.CourierRepository = &Repository{}
 
 type Repository struct {
 	tracker Tracker
-}
-
-// Add implements ports.CourierRepository.
-func (r *Repository) Add(ctx context.Context, aggregate *courier.Courier) error {
-	panic("unimplemented")
-}
-
-// Get implements ports.CourierRepository.
-func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*courier.Courier, error) {
-	panic("unimplemented")
-}
-
-// GetAllFree implements ports.CourierRepository.
-func (r *Repository) GetAllFree(ctx context.Context) ([]*courier.Courier, error) {
-	panic("unimplemented")
-}
-
-// Update implements ports.CourierRepository.
-func (r *Repository) Update(ctx context.Context, aggregate *courier.Courier) error {
-	panic("unimplemented")
 }
 
 func NewRepository(tracker Tracker) (*Repository, error) {
@@ -42,4 +26,108 @@ func NewRepository(tracker Tracker) (*Repository, error) {
 	return &Repository{
 		tracker: tracker,
 	}, nil
+}
+
+// Add implements ports.CourierRepository.
+func (r *Repository) Add(ctx context.Context, aggregate *courier.Courier) error {
+	r.tracker.Track(aggregate)
+
+	dto := DomainToDTO(aggregate)
+
+	hasTransaction := !r.tracker.InTx()
+	if hasTransaction {
+		r.tracker.Begin(ctx)
+	}
+
+	tx := r.tracker.Tx()
+	err := tx.WithContext(ctx).
+		Session(&gorm.Session{FullSaveAssociations: true}).
+		Create(&dto).
+		Error
+	if err != nil {
+		return err
+	}
+
+	if hasTransaction {
+		if err = r.tracker.Commit(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*courier.Courier, error) {
+	var dto CourierDTO
+
+	tx := r.getTxOrDb()
+	res := tx.WithContext(ctx).
+		Preload(clause.Associations).
+		Find(&dto, ID)
+	if res.RowsAffected == 0 {
+		return nil, errs.NewObjectNotFoundError("courier.id", ID)
+	}
+
+	return DtoToDomain(dto), nil
+}
+
+func (r *Repository) GetAllFree(ctx context.Context) ([]*courier.Courier, error) {
+	var dtos []CourierDTO
+
+	tx := r.getTxOrDb()
+	res := tx.WithContext(ctx).
+		Preload(clause.Associations).
+		Where(`
+        NOT EXISTS (
+            SELECT 1 FROM storage_places sp
+            WHERE sp.courier_id = couriers.id AND sp.order_id IS NOT NULL
+        )`).
+		Find(&dtos)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return nil, errs.NewObjectNotFoundError("Free couriers", nil)
+	}
+
+	couriers := make([]*courier.Courier, 0, len(dtos))
+	for _, dto := range dtos {
+		couriers = append(couriers, DtoToDomain(dto))
+	}
+
+	return couriers, nil
+}
+
+func (r *Repository) Update(ctx context.Context, aggregate *courier.Courier) error {
+	r.tracker.Track(aggregate)
+
+	dto := DomainToDTO(aggregate)
+	if !r.tracker.InTx() {
+		r.tracker.Begin(ctx)
+	}
+
+	tx := r.tracker.Tx()
+	err := tx.WithContext(ctx).
+		Session(&gorm.Session{FullSaveAssociations: true}).
+		Save(&dto).
+		Error
+	if err != nil {
+		return err
+	}
+
+	if !r.tracker.InTx() {
+		if err = r.tracker.Commit(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) getTxOrDb() *gorm.DB {
+	if tx := r.tracker.Tx(); tx != nil {
+		return tx
+	}
+	return r.tracker.Db()
 }

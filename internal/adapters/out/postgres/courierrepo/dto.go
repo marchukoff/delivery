@@ -25,6 +25,7 @@ type StoragePlaceDTO struct {
 	Name        string
 	TotalVolume int
 	OrderID     uuid.UUID `gorm:"type:uuid"`
+	CourierID   uuid.UUID `gorm:"type:uuid"`
 }
 
 func (StoragePlaceDTO) TableName() string {
