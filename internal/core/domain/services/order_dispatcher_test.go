@@ -3,8 +3,8 @@ package services_test
 import (
 	"testing"
 
-	"delivery/internal/core/domain/kernel"
 	"delivery/internal/core/domain/model/courier"
+	"delivery/internal/core/domain/model/kernel"
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/core/domain/services"
 	"delivery/internal/pkg/errs"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"slices"
 
-	"delivery/internal/core/domain/kernel"
+	"delivery/internal/core/domain/model/kernel"
 	"delivery/internal/pkg/errs"
 
 	"github.com/google/uuid"
@@ -37,6 +37,16 @@ func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, 
 		volume:   volume,
 		status:   StatusCreated,
 	}, nil
+}
+
+func RestoreOrder(id uuid.UUID, courier *uuid.UUID, location kernel.Location, volume int, status Status) *Order {
+	return &Order{
+		id:        id,
+		courierID: courier,
+		location:  location,
+		volume:    volume,
+		status:    status,
+	}
 }
 
 func (o *Order) Equals(other *Order) bool {
