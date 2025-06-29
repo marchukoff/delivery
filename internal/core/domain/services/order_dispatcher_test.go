@@ -72,7 +72,7 @@ func Test_orderDispatcher_Dispatch(t *testing.T) {
 			if err != nil {
 				assert.ErrorIs(err, tt.wantErr)
 			} else {
-				assert.True(tt.want.Equals(got))
+				assert.True(tt.want.Equal(got))
 				assert.Equal(order.StatusAssigned, tt.order.Status())
 				assert.Equal(got.ID(), *tt.order.CourierID())
 			}

@@ -6,6 +6,8 @@ import (
 
 	. "delivery/internal/core/domain/model/kernel"
 	"delivery/internal/pkg/errs"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewLocation(t *testing.T) {
@@ -56,9 +58,7 @@ func TestNewLocation(t *testing.T) {
 
 func TestNewRandomLocation(t *testing.T) {
 	got := NewRandomLocation()
-	if got.IsEmpty() {
-		t.Errorf("NewRandomLocation() = %v, want non empty Location", got)
-	}
+	assert.True(t, got.IsValid())
 }
 
 func TestLocation_DistanceTo(t *testing.T) {
@@ -136,7 +136,7 @@ func FuzzNewRandomLocation(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, i int) {
 		got := NewRandomLocation()
-		if got.IsEmpty() {
+		if !got.IsValid() {
 			t.Errorf("%d: got empty Location", i)
 		}
 	})

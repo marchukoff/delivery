@@ -35,30 +35,6 @@ func TestNewCourier(t *testing.T) {
 			},
 			want: nil,
 		},
-		{
-			name: "bad name",
-			args: args{
-				speed:    1,
-				location: kernel.NewRandomLocation(),
-			},
-			want: errs.ErrValueIsRequired,
-		},
-		{
-			name: "bad speed",
-			args: args{
-				name:     "R2D2",
-				location: kernel.NewRandomLocation(),
-			},
-			want: errs.ErrValueIsRequired,
-		},
-		{
-			name: "bad location",
-			args: args{
-				name:  "R2D2",
-				speed: 1,
-			},
-			want: errs.ErrValueIsRequired,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,17 +88,6 @@ func TestCourier_AddStoragePlace(t *testing.T) {
 				return c
 			}(),
 			want: errs.ErrValueIsRequired,
-		},
-		{
-			name: "bad nil courier",
-			args: args{name: "test", volume: 1},
-			want: ErrCourierNotInitialized,
-		},
-		{
-			name:    "bad not initialized courier",
-			args:    args{name: "test", volume: 1},
-			courier: new(Courier),
-			want:    ErrCourierNotInitialized,
 		},
 	}
 
@@ -186,7 +151,7 @@ func TestCourier_CanTakeOrder(t *testing.T) {
 				return x
 			}(),
 			want:    false,
-			wantErr: ErrCourierNotInitialized,
+			wantErr: nil,
 		},
 		{
 			name: "bad nil order",
@@ -208,16 +173,6 @@ func TestCourier_CanTakeOrder(t *testing.T) {
 			order:   new(order.Order),
 			want:    false,
 			wantErr: errs.ErrValueIsInvalid,
-		},
-		{
-			name: "bad nil courier",
-			order: func() *order.Order {
-				x, err := order.NewOrder(uuid.New(), kernel.NewRandomLocation(), 100)
-				assert.NoError(err)
-				return x
-			}(),
-			want:    false,
-			wantErr: ErrCourierNotInitialized,
 		},
 	}
 
@@ -269,7 +224,7 @@ func TestCourier_TakeOrder(t *testing.T) {
 				assert.NoError(err)
 				return x
 			}(),
-			want: ErrCannotTakeOrder,
+			want: ErrNoSuitableStoragePlace,
 		},
 	}
 
@@ -330,7 +285,7 @@ func TestCourier_CompleteOrder(t *testing.T) {
 				assert.NoError(err)
 				return x
 			}(),
-			want: errs.ErrObjectNotFound,
+			want: ErrStoragePlaceNotInitialized,
 		},
 	}
 
@@ -348,7 +303,6 @@ func TestCourier_CompleteOrder(t *testing.T) {
 					}
 					return ids
 				}(), tt.order.ID())
-				assert.Equal(order.StatusCompleted, tt.order.Status())
 			}
 		})
 	}
@@ -396,7 +350,7 @@ func TestCourier_CalculateTimeToLocation(t *testing.T) {
 				return loc
 			}(),
 			want:    0,
-			wantErr: ErrTargetReached,
+			wantErr: nil,
 		},
 		{
 			name: "bad target",

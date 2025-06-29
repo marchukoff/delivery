@@ -15,7 +15,7 @@ const (
 
 type Location struct {
 	x, y  int
-	isSet bool
+	valid bool
 }
 
 func NewLocation(x, y int) (Location, error) {
@@ -27,7 +27,7 @@ func NewLocation(x, y int) (Location, error) {
 		return Location{}, errs.NewValueIsOutOfRangeError("Location.y", y, minCoord, maxCoord)
 	}
 
-	return Location{x: x, y: y, isSet: true}, nil
+	return Location{x: x, y: y, valid: true}, nil
 }
 
 func NewRandomLocation() Location {
@@ -45,12 +45,12 @@ func NewRandomLocation() Location {
 }
 
 func (l Location) DistanceTo(target Location) (int, error) {
-	if !l.isSet {
+	if !l.valid {
 		cause := errors.New("source location not initialized")
 		return 0, errs.NewValueIsInvalidErrorWithCause("Location", cause)
 	}
 
-	if !target.isSet {
+	if !target.valid {
 		cause := errors.New("target location not initialized")
 		return 0, errs.NewValueIsInvalidErrorWithCause("Location", cause)
 	}
@@ -63,7 +63,7 @@ func (l Location) DistanceTo(target Location) (int, error) {
 
 func (l Location) Equals(other Location) bool { return l == other }
 
-func (l Location) IsEmpty() bool { return !l.isSet }
+func (l Location) IsValid() bool { return l.valid }
 
 func (l Location) X() int { return l.x }
 
