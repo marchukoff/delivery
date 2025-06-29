@@ -9,7 +9,9 @@ type GetAllCouriersResponse struct {
 }
 
 type Courier struct {
-	ID       uuid.UUID
+	ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
 	Name     string
-	Location Location
+	Location Location `gorm:"embedded;embeddedPrefix:location_"`
 }
+
+func (Courier) TableName() string { return "couriers" }

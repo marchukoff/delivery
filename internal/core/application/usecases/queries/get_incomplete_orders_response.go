@@ -9,6 +9,8 @@ type GetIncompleteOrdersResponse struct {
 }
 
 type Order struct {
-	ID       uuid.UUID
-	Location Location
+	ID       uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Location Location  `gorm:"embedded;embeddedPrefix:location_"`
 }
+
+func (Order) TableName() string { return "orders" }
