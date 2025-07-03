@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"delivery/internal/adapters/out/postgres"
-	"delivery/internal/adapters/out/postgres/courierrepo"
 	"delivery/internal/core/domain/model/courier"
 	"delivery/internal/core/domain/model/kernel"
 
@@ -17,17 +16,21 @@ func Test_GetAllCouriersQuery(t *testing.T) {
 	ctx, db, err := setupTest(t)
 	assert.NoError(err)
 
-	uow, err := postgres.NewUnitOfWork(db)
+	factory := postgres.NewUnitOfWorkFactory(db)
+	assert.NoError(err)
+
+	uow, err := factory()
 	assert.NoError(err)
 
 	courier, err := courier.NewCourier("test", 5, kernel.NewRandomLocation())
 	assert.NoError(err)
 
-	repo, err := courierrepo.NewRepository(uow)
+	repo := uow.CourierRepository()
 	assert.NoError(err)
 
 	err = repo.Add(ctx, courier)
 	assert.NoError(err)
+	assert.NoError(uow.Commit(ctx))
 
 	query, err := NewGetAllCouriersQuery()
 	assert.NoError(err)
