@@ -18,7 +18,7 @@ type moveCouriersCommandHandler struct {
 
 func NewMoveCouriersCommandHandler(factory ports.UnitOfWorkFactory) (*moveCouriersCommandHandler, error) {
 	if factory == nil {
-		errs.NewValueIsRequiredError("uow")
+		return nil, errs.NewValueIsRequiredError("factory")
 	}
 	return &moveCouriersCommandHandler{factory: factory}, nil
 }
