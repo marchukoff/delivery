@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"delivery/internal/core/domain/model/kernel"
+	"delivery/internal/pkg/ddd"
 	"delivery/internal/pkg/errs"
 
 	"github.com/google/uuid"
@@ -12,19 +13,21 @@ import (
 
 var ErrOrderNotInitialized = errors.New("order not initialized")
 
+var _ ddd.AggregateRoot = (*Order)(nil)
+
 type Order struct {
-	id        uuid.UUID
-	courierID *uuid.UUID
-	location  kernel.Location
-	volume    int
-	status    Status
+	baseAggregate *ddd.BaseAggregate[uuid.UUID]
+	courierID     *uuid.UUID
+	location      kernel.Location
+	volume        int
+	status        Status
 }
 
 func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, error) {
 	if orderID == uuid.Nil {
 		return nil, errs.NewValueIsRequiredError("orderID")
 	}
-	if location.IsEmpty() {
+	if !location.IsValid() {
 		return nil, errs.NewValueIsRequiredError("location")
 	}
 	if volume <= 0 {
@@ -32,20 +35,20 @@ func NewOrder(orderID uuid.UUID, location kernel.Location, volume int) (*Order, 
 	}
 
 	return &Order{
-		id:       orderID,
-		location: location,
-		volume:   volume,
-		status:   StatusCreated,
+		baseAggregate: ddd.NewBaseAggregate(orderID),
+		location:      location,
+		volume:        volume,
+		status:        StatusCreated,
 	}, nil
 }
 
 func RestoreOrder(id uuid.UUID, courier *uuid.UUID, location kernel.Location, volume int, status Status) *Order {
 	return &Order{
-		id:        id,
-		courierID: courier,
-		location:  location,
-		volume:    volume,
-		status:    status,
+		baseAggregate: ddd.NewBaseAggregate(id),
+		courierID:     courier,
+		location:      location,
+		volume:        volume,
+		status:        status,
 	}
 }
 
@@ -61,7 +64,7 @@ func (o *Order) ID() uuid.UUID {
 	if o == nil {
 		return uuid.Nil
 	}
-	return o.id
+	return o.baseAggregate.ID()
 }
 
 func (o *Order) CourierID() *uuid.UUID {
@@ -120,4 +123,16 @@ func (o *Order) Complete() error {
 
 	o.status = StatusCompleted
 	return nil
+}
+
+func (o *Order) ClearDomainEvents() {
+	o.baseAggregate.ClearDomainEvents()
+}
+
+func (o *Order) GetDomainEvents() []ddd.DomainEvent {
+	return o.baseAggregate.GetDomainEvents()
+}
+
+func (o *Order) RaiseDomainEvent(event ddd.DomainEvent) {
+	o.baseAggregate.RaiseDomainEvent(event)
 }

@@ -1,3 +1,7 @@
 package ddd
 
-type AggregateRoot any
+type AggregateRoot interface {
+	GetDomainEvents() []DomainEvent
+	ClearDomainEvents()
+	RaiseDomainEvent(DomainEvent)
+}

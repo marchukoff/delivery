@@ -15,43 +15,23 @@ import (
 var _ ports.CourierRepository = &Repository{}
 
 type Repository struct {
-	tracker Tracker
+	db *gorm.DB
 }
 
-func NewRepository(tracker Tracker) (*Repository, error) {
-	if tracker == nil {
-		return nil, errs.NewValueIsRequiredError("tracker")
-	}
-
-	return &Repository{
-		tracker: tracker,
-	}, nil
+func NewRepository(db *gorm.DB) *Repository {
+	return &Repository{db: db}
 }
 
 // Add implements ports.CourierRepository.
 func (r *Repository) Add(ctx context.Context, aggregate *courier.Courier) error {
-	r.tracker.Track(aggregate)
-
 	dto := DomainToDTO(aggregate)
 
-	hasTransaction := !r.tracker.InTx()
-	if hasTransaction {
-		r.tracker.Begin(ctx)
-	}
-
-	tx := r.tracker.Tx()
-	err := tx.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Session(&gorm.Session{FullSaveAssociations: true}).
 		Create(&dto).
 		Error
 	if err != nil {
 		return err
-	}
-
-	if hasTransaction {
-		if err = r.tracker.Commit(ctx); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -60,8 +40,7 @@ func (r *Repository) Add(ctx context.Context, aggregate *courier.Courier) error 
 func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*courier.Courier, error) {
 	var dto CourierDTO
 
-	tx := r.getTxOrDb()
-	res := tx.WithContext(ctx).
+	res := r.db.WithContext(ctx).
 		Preload(clause.Associations).
 		Find(&dto, ID)
 	if res.RowsAffected == 0 {
@@ -74,8 +53,7 @@ func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*courier.Courier, e
 func (r *Repository) GetAllFree(ctx context.Context) ([]*courier.Courier, error) {
 	var dtos []CourierDTO
 
-	tx := r.getTxOrDb()
-	res := tx.WithContext(ctx).
+	res := r.db.WithContext(ctx).
 		Preload(clause.Associations).
 		Where(`
         NOT EXISTS (
@@ -100,15 +78,8 @@ func (r *Repository) GetAllFree(ctx context.Context) ([]*courier.Courier, error)
 }
 
 func (r *Repository) Update(ctx context.Context, aggregate *courier.Courier) error {
-	r.tracker.Track(aggregate)
-
 	dto := DomainToDTO(aggregate)
-	if !r.tracker.InTx() {
-		r.tracker.Begin(ctx)
-	}
-
-	tx := r.tracker.Tx()
-	err := tx.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Session(&gorm.Session{FullSaveAssociations: true}).
 		Save(&dto).
 		Error
@@ -116,18 +87,5 @@ func (r *Repository) Update(ctx context.Context, aggregate *courier.Courier) err
 		return err
 	}
 
-	if !r.tracker.InTx() {
-		if err = r.tracker.Commit(ctx); err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func (r *Repository) getTxOrDb() *gorm.DB {
-	if tx := r.tracker.Tx(); tx != nil {
-		return tx
-	}
-	return r.tracker.Db()
 }

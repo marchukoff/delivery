@@ -4,7 +4,6 @@ import (
 	"delivery/internal/adapters/out/postgres"
 	"delivery/internal/core/domain/services"
 	"delivery/internal/core/ports"
-	"log"
 
 	"gorm.io/gorm"
 )
@@ -20,10 +19,6 @@ func (c *CompositionRoot) NewOrderDispatcherService() services.OrderDispatcher {
 	return services.NewOrderDispatcher()
 }
 
-func (cr *CompositionRoot) NewUnitOfWork() ports.UnitOfWork {
-	unitOfWork, err := postgres.NewUnitOfWork((*gorm.DB)(nil))
-	if err != nil {
-		log.Fatalf("cannot create UnitOfWork: %v", err)
-	}
-	return unitOfWork
+func (cr *CompositionRoot) NewUnitOfWork() ports.UnitOfWorkFactory {
+	return postgres.NewUnitOfWorkFactory((*gorm.DB)(nil))
 }
