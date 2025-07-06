@@ -1,25 +1,28 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"net"
+	"log"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"delivery/cmd"
-	"delivery/internal/generated/servers"
-	"delivery/internal/pkg/errs"
-
 	httpin "delivery/internal/adapters/in/http"
 	"delivery/internal/adapters/out/postgres/courierrepo"
 	"delivery/internal/adapters/out/postgres/orderrepo"
+	"delivery/internal/core/application/usecases/commands"
+	"delivery/internal/core/domain/services"
+	"delivery/internal/generated/servers"
+	"delivery/internal/pkg/errs"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
+	_ "github.com/lib/pq"
 	oam "github.com/oapi-codegen/echo-middleware"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -40,6 +43,7 @@ func main() {
 	mustAutoMigrate(db)
 
 	cr := cmd.NewCompositionRoot(cfg, db)
+	startJobs(cr, context.TODO())
 	startWebServer(cr, cfg.HttpPort)
 }
 
@@ -79,10 +83,12 @@ func startWebServer(compositionRoot *cmd.CompositionRoot, port string) {
 		compositionRoot.NewGetIncompletedOrdersQueryHandler(),
 	)
 	if err != nil {
-		log.Fatalf("Ошибка инициализации HTTP Server: %v", err)
+		log.Fatalf("ERROR: init HTTP Server: %v", err)
 	}
 
 	e := echo.New()
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS},
@@ -92,12 +98,13 @@ func startWebServer(compositionRoot *cmd.CompositionRoot, port string) {
 	if err != nil {
 		log.Fatalf("ERROR: reading OpenAPI spec: %v", err)
 	}
-	e.Use(oam.OapiRequestValidator(spec))
+	_ = oam.OapiRequestValidator(spec)
+	// e.Use(oam.OapiRequestValidator(spec)) // bug: it will break //docs ang /openapi.json
 	e.Pre(middleware.RemoveTrailingSlash())
 	registerSwaggerOpenApi(e)
 	registerSwaggerUi(e)
 	servers.RegisterHandlers(e, handlers)
-	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", port)))
+	e.Logger.Fatal(e.Start("0.0.0.0:" + port))
 }
 
 func registerSwaggerOpenApi(e *echo.Echo) {
@@ -218,4 +225,48 @@ func mustAutoMigrate(db *gorm.DB) {
 	if err != nil {
 		log.Fatalf("ERROR: automigrate order: %v", err)
 	}
+}
+
+func startJobs(cr *cmd.CompositionRoot, ctx context.Context) {
+	assignOrdersCommandHandler, err := commands.NewAssignOrderCommandHandler(
+		cr.NewUnitOfWorkFactory(),
+		services.NewOrderDispatcher(),
+	)
+	if err != nil {
+		log.Fatalf("ERROR: create assignOrdersCommandHandler: %v", err)
+	}
+
+	moveCouriersCommandHandler, err := commands.NewMoveCouriersCommandHandler(cr.NewUnitOfWorkFactory())
+	if err != nil {
+		log.Fatalf("ERROR: create assignOrdersCommandHandler: %v", err)
+	}
+
+	ch := time.Tick(time.Second)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ch:
+				// assign orders
+				assignOrderCommand, err := commands.NewAssignOrderCommand()
+				if err != nil {
+					log.Printf("ERROR: make command AssignOrderCommand: %v", err)
+				}
+				err = assignOrdersCommandHandler.Handle(ctx, assignOrderCommand)
+				if err != nil {
+					log.Printf("ERROR: handle command AssignOrderCommand: %v", err)
+				}
+				// move couriers
+				moveCouriersCommand, err := commands.NewMoveCouriersCommand()
+				if err != nil {
+					log.Printf("ERROR: make command MoveCouriersCommand: %v", err)
+				}
+				err = moveCouriersCommandHandler.Handle(ctx, moveCouriersCommand)
+				if err != nil {
+					log.Printf("ERROR: handle command MoveCouriersCommand: %v", err)
+				}
+			}
+		}
+	}()
 }
