@@ -17,7 +17,7 @@ type createCourierCommandHandler struct {
 	factory ports.UnitOfWorkFactory
 }
 
-func NewAddCourierCommandHandler(factory ports.UnitOfWorkFactory) (*createCourierCommandHandler, error) {
+func NewCreateCourierCommandHandler(factory ports.UnitOfWorkFactory) (*createCourierCommandHandler, error) {
 	if factory == nil {
 		return nil, errs.NewValueIsRequiredError("factory")
 	}
