@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"delivery/internal/adapters/out/postgres/shared"
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/core/ports"
 	"delivery/internal/pkg/errs"
@@ -16,37 +17,69 @@ import (
 var _ ports.OrderRepository = &Repository{}
 
 type Repository struct {
-	db *gorm.DB
+	tracker shared.Tracker
 }
 
-func NewRepository(db *gorm.DB) *Repository {
-	return &Repository{db: db}
+func NewRepository(tracker shared.Tracker) (ports.OrderRepository, error) {
+	if tracker == nil {
+		return nil, errs.NewValueIsRequiredError("tracker")
+	}
+	return &Repository{tracker: tracker}, nil
 }
 
 func (r *Repository) Add(ctx context.Context, aggregate *order.Order) error {
+	r.tracker.Track(aggregate)
 	dto := DomainToDTO(aggregate)
-	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Create(&dto).Error
+
+	isInTransaction := r.tracker.InTx()
+	if !isInTransaction {
+		r.tracker.Begin(ctx)
+	}
+	tx := r.tracker.Tx()
+
+	err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Create(&dto).Error
 	if err != nil {
 		return err
 	}
 
+	if !isInTransaction {
+		err := r.tracker.Commit(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *Repository) Update(ctx context.Context, aggregate *order.Order) error {
+	r.tracker.Track(aggregate)
 	dto := DomainToDTO(aggregate)
-	err := r.db.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(&dto).Error
+
+	isInTransaction := r.tracker.InTx()
+	if !isInTransaction {
+		r.tracker.Begin(ctx)
+	}
+	tx := r.tracker.Tx()
+
+	err := tx.WithContext(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(&dto).Error
 	if err != nil {
 		return err
 	}
 
+	if !isInTransaction {
+		err := r.tracker.Commit(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*order.Order, error) {
-	dto := OrderDTO{}
+	var dto OrderDTO
 
-	result := r.db.WithContext(ctx).
+	tx := r.getTxOrDb()
+	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Find(&dto, ID)
 	if result.RowsAffected == 0 {
@@ -58,8 +91,10 @@ func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*order.Order, error
 }
 
 func (r *Repository) GetFirstInCreatedStatus(ctx context.Context) (*order.Order, error) {
-	dto := OrderDTO{}
-	result := r.db.WithContext(ctx).
+	var dto OrderDTO
+
+	tx := r.getTxOrDb()
+	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Where("status = ?", order.StatusCreated).
 		First(&dto)
@@ -77,7 +112,8 @@ func (r *Repository) GetFirstInCreatedStatus(ctx context.Context) (*order.Order,
 func (r *Repository) GetAllInAssignedStatus(ctx context.Context) ([]*order.Order, error) {
 	var dtos []OrderDTO
 
-	result := r.db.WithContext(ctx).
+	tx := r.getTxOrDb()
+	result := tx.WithContext(ctx).
 		Preload(clause.Associations).
 		Where("status = ?", order.StatusAssigned).
 		Find(&dtos)
@@ -94,4 +130,11 @@ func (r *Repository) GetAllInAssignedStatus(ctx context.Context) ([]*order.Order
 	}
 
 	return aggregates, nil
+}
+
+func (r *Repository) getTxOrDb() *gorm.DB {
+	if tx := r.tracker.Tx(); tx != nil {
+		return tx
+	}
+	return r.tracker.Db()
 }

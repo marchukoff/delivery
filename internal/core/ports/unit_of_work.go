@@ -4,11 +4,16 @@ import (
 	"context"
 )
 
-type UnitOfWorkFactory func() (UnitOfWork, error)
+type UnitOfWorkFactory interface {
+	New(ctx context.Context) (UnitOfWork, error)
+}
 
 type UnitOfWork interface {
+	// DB spesific
+	Begin(ctx context.Context)
 	Commit(ctx context.Context) error
-	Rollback(ctx context.Context)
+	RollbackUnlessCommitted(ctx context.Context)
+	// Domain specific
 	OrderRepository() OrderRepository
 	CourierRepository() CourierRepository
 }

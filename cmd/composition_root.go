@@ -25,8 +25,12 @@ func (c *CompositionRoot) NewOrderDispatcherService() services.OrderDispatcher {
 	return services.NewOrderDispatcher()
 }
 
-func (c *CompositionRoot) NewUnitOfWork() ports.UnitOfWorkFactory {
-	return postgres.NewUnitOfWorkFactory((*gorm.DB)(nil))
+func (c *CompositionRoot) NewUnitOfWorkFactory() ports.UnitOfWorkFactory {
+	factory, err := postgres.NewUnitOfWorkFactory(c.db)
+	if err != nil {
+		log.Fatalf("new unit of work factory: %v", err)
+	}
+	return factory
 }
 
 func (c *CompositionRoot) NewCreateOrderCommandHandler() commands.CreateOrderCommandHandler {
@@ -59,8 +63,4 @@ func (c *CompositionRoot) NewGetIncompletedOrdersQueryHandler() queries.GetIncom
 		log.Fatalf("ERROR: cannot create GetIncompletedOrdersQueryHandler: %v", err)
 	}
 	return h
-}
-
-func (c *CompositionRoot) NewUnitOfWorkFactory() ports.UnitOfWorkFactory {
-	return postgres.NewUnitOfWorkFactory(c.db)
 }

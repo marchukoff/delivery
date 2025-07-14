@@ -24,17 +24,18 @@ func Test_MoveCouriersCommand(t *testing.T) {
 	ctx, db, err := setupTest(t)
 	assert.NoError(err)
 
-	// Создаем UnitOfWork
-	factory := postgres.NewUnitOfWorkFactory(db)
-
 	// Вызываем Add
-	name, speed := "test", 5
+	name, speed := "test", 2
 	loc1, err := kernel.NewLocation(1, 1)
 	assert.NoError(err)
+
 	loc2, err := kernel.NewLocation(9, 9)
 	assert.NoError(err)
 
 	courier, err := courier.NewCourier(name, speed, loc1)
+	assert.NoError(err)
+
+	factory, err := postgres.NewUnitOfWorkFactory(db)
 	assert.NoError(err)
 
 	order, err := order.NewOrder(uuid.New(), loc2, 1)
@@ -43,32 +44,22 @@ func Test_MoveCouriersCommand(t *testing.T) {
 	assert.NoError(order.Assign(courier.ID()))
 	assert.NoError(courier.TakeOrder(order))
 	// save
-	uow, err := factory()
+	uow, err := factory.New(ctx)
 	assert.NoError(err)
-	err = uow.CourierRepository().Add(ctx, courier)
-	assert.NoError(err)
-
-	err = uow.OrderRepository().Add(ctx, order)
-	assert.NoError(err)
-	assert.NoError(uow.Commit(ctx))
-
+	assert.NoError(uow.CourierRepository().Add(ctx, courier))
+	assert.NoError(uow.OrderRepository().Add(ctx, order))
 	// change
 	command, err := NewMoveCouriersCommand()
 	assert.NoError(err)
-
 	handler, err := NewMoveCouriersCommandHandler(factory)
 	assert.NoError(err)
 	err = handler.Handle(ctx, command)
 	assert.NoError(err)
-
-	// retrieve
-	// FIXME: check location
-	// uow, err = factory()
-	// assert.NoError(err)
-	// courier2, err := uow.CourierRepository().Get(ctx, courier.ID())
-	// assert.NoError(err)
-	// assert.NoError(uow.Commit(ctx))
-	// assert.False(loc1.Equals(courier2.Location()))
+	// load
+	courier, err = uow.CourierRepository().Get(ctx, courier.ID())
+	assert.NoError(err)
+	_ = courier
+	assert.False(loc1.Equals(courier.Location()))
 }
 
 func setupTest(t *testing.T) (context.Context, *gorm.DB, error) {

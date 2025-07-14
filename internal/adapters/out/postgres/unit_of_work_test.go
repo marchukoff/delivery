@@ -25,8 +25,8 @@ func Test_CourierRepositoryShouldCanAddCourier(t *testing.T) {
 	assert.NoError(err)
 
 	// Создаем UnitOfWork
-	factory := NewUnitOfWorkFactory(db)
-	assert.NotNil(factory)
+	factory, err := NewUnitOfWorkFactory(db)
+	assert.NoError(err)
 
 	// Вызываем Add
 	name := "test"
@@ -35,12 +35,12 @@ func Test_CourierRepositoryShouldCanAddCourier(t *testing.T) {
 	courier, err := courier.NewCourier(name, speed, loc)
 	assert.NoError(err)
 
-	uow, err := factory()
+	uow, err := factory.New(ctx)
 	assert.NoError(err)
-	err = uow.CourierRepository().Add(ctx, courier)
-	assert.NoError(err)
-	err = uow.Commit(ctx)
-	assert.NoError(err)
+
+	uow.Begin(ctx)
+	assert.NoError(uow.CourierRepository().Add(ctx, courier))
+	assert.NoError(uow.Commit(ctx))
 
 	// Считываем данные из БД
 	var dto courierrepo.CourierDTO
@@ -65,9 +65,9 @@ func Test_OrderRepositoryShouldCanAddOrder(t *testing.T) {
 	assert.NoError(err)
 
 	// Создаем UnitOfWork
-	factory := NewUnitOfWorkFactory(db)
-	assert.NotNil(factory())
-	uow, err := factory()
+	factory, err := NewUnitOfWorkFactory(db)
+	assert.NoError(err)
+	uow, err := factory.New(ctx)
 	assert.NoError(err)
 
 	// Вызываем Add
@@ -77,10 +77,10 @@ func Test_OrderRepositoryShouldCanAddOrder(t *testing.T) {
 	loc := kernel.NewRandomLocation()
 	order, err := order.NewOrder(id, loc, volume)
 	assert.NoError(err)
-	err = uow.OrderRepository().Add(ctx, order)
-	assert.NoError(err)
-	err = uow.Commit(ctx)
-	assert.NoError(err)
+
+	uow.Begin(ctx)
+	assert.NoError(uow.OrderRepository().Add(ctx, order))
+	assert.NoError(uow.Commit(ctx))
 
 	// Считываем данные из БД
 	var dto orderrepo.OrderDTO

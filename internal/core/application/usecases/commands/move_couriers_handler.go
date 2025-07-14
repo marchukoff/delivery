@@ -28,11 +28,11 @@ func (h *moveCouriersCommandHandler) Handle(ctx context.Context, command MoveCou
 		return errs.NewValueIsRequiredError("command")
 	}
 
-	uow, err := h.factory()
+	uow, err := h.factory.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer uow.Rollback(ctx)
+	defer uow.RollbackUnlessCommitted(ctx)
 
 	orders, err := uow.OrderRepository().GetAllInAssignedStatus(ctx)
 	if err != nil {
@@ -62,6 +62,8 @@ func (h *moveCouriersCommandHandler) Handle(ctx context.Context, command MoveCou
 			}
 		}
 
+		uow.Begin(ctx)
+
 		if err = uow.OrderRepository().Update(ctx, order); err != nil {
 			return err
 		}
@@ -69,7 +71,11 @@ func (h *moveCouriersCommandHandler) Handle(ctx context.Context, command MoveCou
 		if err = uow.CourierRepository().Update(ctx, courier); err != nil {
 			return err
 		}
+
+		if err = uow.Commit(ctx); err != nil {
+			return err
+		}
 	}
 
-	return uow.Commit(ctx)
+	return nil
 }

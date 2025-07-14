@@ -29,11 +29,11 @@ func (h *createCourierCommandHandler) Handle(ctx context.Context, command Create
 		return errs.NewValueIsRequiredError("command")
 	}
 
-	uow, err := h.factory()
+	uow, err := h.factory.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer uow.Rollback(ctx)
+	defer uow.RollbackUnlessCommitted(ctx)
 
 	courier, err := courier.NewCourier(command.Name(), command.Speed(), kernel.NewRandomLocation())
 	if err != nil {

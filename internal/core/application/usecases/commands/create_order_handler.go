@@ -29,11 +29,11 @@ func (h *createOrderCommandHandler) Handle(ctx context.Context, command CreateOr
 		return errs.NewValueIsRequiredError("command")
 	}
 
-	uow, err := h.factory()
+	uow, err := h.factory.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer uow.Rollback(ctx)
+	defer uow.RollbackUnlessCommitted(ctx)
 
 	order, err := order.NewOrder(command.OrderID(), kernel.NewRandomLocation(), command.Volume())
 	if err != nil {

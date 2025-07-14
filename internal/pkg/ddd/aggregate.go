@@ -7,7 +7,7 @@ type BaseAggregate[ID comparable] struct {
 
 func NewBaseAggregate[ID comparable](id ID) *BaseAggregate[ID] {
 	return &BaseAggregate[ID]{
-		baseEntity:   NewBaseEntity[ID](id),
+		baseEntity:   NewBaseEntity(id),
 		domainEvents: make([]DomainEvent, 0),
 	}
 }
