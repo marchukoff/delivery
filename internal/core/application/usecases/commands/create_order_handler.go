@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 
-	"delivery/internal/core/domain/model/kernel"
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/core/ports"
 	"delivery/internal/pkg/errs"
@@ -14,14 +13,18 @@ type CreateOrderCommandHandler interface {
 }
 
 type createOrderCommandHandler struct {
-	factory ports.UnitOfWorkFactory
+	factory   ports.UnitOfWorkFactory
+	geoClient ports.GeoClient
 }
 
-func NewCreateOrderCommandHandler(factory ports.UnitOfWorkFactory) (*createOrderCommandHandler, error) {
+func NewCreateOrderCommandHandler(factory ports.UnitOfWorkFactory, geoClient ports.GeoClient) (*createOrderCommandHandler, error) {
 	if factory == nil {
 		return nil, errs.NewValueIsRequiredError("factory")
 	}
-	return &createOrderCommandHandler{factory: factory}, nil
+	if geoClient == nil {
+		return nil, errs.NewValueIsRequiredError("geoClient")
+	}
+	return &createOrderCommandHandler{factory: factory, geoClient: geoClient}, nil
 }
 
 func (h *createOrderCommandHandler) Handle(ctx context.Context, command CreateOrderCommand) error {
@@ -35,7 +38,12 @@ func (h *createOrderCommandHandler) Handle(ctx context.Context, command CreateOr
 	}
 	defer uow.RollbackUnlessCommitted(ctx)
 
-	order, err := order.NewOrder(command.OrderID(), kernel.NewRandomLocation(), command.Volume())
+	location, err := h.geoClient.GetGeolocation(ctx, command.Street())
+	if err != nil {
+		return err
+	}
+
+	order, err := order.NewOrder(command.OrderID(), location, command.Volume())
 	if err != nil {
 		return err
 	}

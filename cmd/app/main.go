@@ -43,7 +43,8 @@ func main() {
 	mustAutoMigrate(db)
 
 	cr := cmd.NewCompositionRoot(cfg, db)
-	startJobs(cr, context.TODO())
+	defer cr.CloseAll()
+	startJobs(cr, context.TODO()) // TODO: move to closers
 	startWebServer(cr, cfg.HttpPort)
 }
 
