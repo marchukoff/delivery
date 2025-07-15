@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"io"
 	"log"
+	"sync"
 
+	grpcout "delivery/internal/adapters/out/grpc"
 	"delivery/internal/adapters/out/postgres"
 	"delivery/internal/core/application/usecases/commands"
 	"delivery/internal/core/application/usecases/queries"
@@ -13,24 +16,32 @@ import (
 )
 
 type CompositionRoot struct {
-	cfg Config
-	db  *gorm.DB
+	config    Config
+	db        *gorm.DB
+	geoClient ports.GeoClient
+	onceGeo   sync.Once
+	//
+	closers []io.Closer
 }
 
 func NewCompositionRoot(cfg Config, db *gorm.DB) *CompositionRoot {
-	return &CompositionRoot{cfg: cfg, db: db}
+	return &CompositionRoot{config: cfg, db: db}
 }
 
 func (c *CompositionRoot) NewOrderDispatcherService() services.OrderDispatcher {
 	return services.NewOrderDispatcher()
 }
 
-func (c *CompositionRoot) NewUnitOfWork() ports.UnitOfWorkFactory {
-	return postgres.NewUnitOfWorkFactory((*gorm.DB)(nil))
+func (c *CompositionRoot) NewUnitOfWorkFactory() ports.UnitOfWorkFactory {
+	factory, err := postgres.NewUnitOfWorkFactory(c.db)
+	if err != nil {
+		log.Fatalf("new unit of work factory: %v", err)
+	}
+	return factory
 }
 
 func (c *CompositionRoot) NewCreateOrderCommandHandler() commands.CreateOrderCommandHandler {
-	h, err := commands.NewCreateOrderCommandHandler(c.NewUnitOfWorkFactory())
+	h, err := commands.NewCreateOrderCommandHandler(c.NewUnitOfWorkFactory(), c.NewGeoClient())
 	if err != nil {
 		log.Fatalf("ERROR: cannot create CreateOrderCommandHandler: %v", err)
 	}
@@ -61,6 +72,26 @@ func (c *CompositionRoot) NewGetIncompletedOrdersQueryHandler() queries.GetIncom
 	return h
 }
 
-func (c *CompositionRoot) NewUnitOfWorkFactory() ports.UnitOfWorkFactory {
-	return postgres.NewUnitOfWorkFactory(c.db)
+func (cr *CompositionRoot) NewGeoClient() ports.GeoClient {
+	cr.onceGeo.Do(func() {
+		client, err := grpcout.NewClient(cr.config.GeoServiceGrpcHost)
+		if err != nil {
+			log.Fatalf("ERROR: create GeoClient: %v", err)
+		}
+		cr.RegisterCloser(client)
+		cr.geoClient = client
+	})
+	return cr.geoClient
+}
+
+func (cr *CompositionRoot) RegisterCloser(c io.Closer) {
+	cr.closers = append(cr.closers, c)
+}
+
+func (cr *CompositionRoot) CloseAll() {
+	for _, closer := range cr.closers {
+		if err := closer.Close(); err != nil {
+			log.Printf("ERROR: closing resource: %v", err)
+		}
+	}
 }

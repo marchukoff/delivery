@@ -9,3 +9,9 @@ test: format
 server:
 	oapi-codegen -config configs/server.cfg.yaml api/openapi.yaml
 .PHONY: server
+
+service:
+	protoc --go_out=./internal/generated/clients \
+	--go-grpc_out=./internal/generated/clients \
+	./api/proto/geo_service.proto
+.PHONY: service

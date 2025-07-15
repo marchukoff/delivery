@@ -16,20 +16,18 @@ func Test_GetAllCouriersQuery(t *testing.T) {
 	ctx, db, err := setupTest(t)
 	assert.NoError(err)
 
-	factory := postgres.NewUnitOfWorkFactory(db)
+	factory, err := postgres.NewUnitOfWorkFactory(db)
 	assert.NoError(err)
 
-	uow, err := factory()
+	uow, err := factory.New(ctx)
 	assert.NoError(err)
+	uow.Begin(ctx)
 
 	courier, err := courier.NewCourier("test", 5, kernel.NewRandomLocation())
 	assert.NoError(err)
 
 	repo := uow.CourierRepository()
-	assert.NoError(err)
-
-	err = repo.Add(ctx, courier)
-	assert.NoError(err)
+	assert.NoError(repo.Add(ctx, courier))
 	assert.NoError(uow.Commit(ctx))
 
 	query, err := NewGetAllCouriersQuery()

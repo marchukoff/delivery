@@ -27,11 +27,11 @@ func (h *addStoragePlaceCommandHandler) Handle(ctx context.Context, command AddS
 		return errs.NewValueIsRequiredError("command")
 	}
 
-	uow, err := h.factory()
+	uow, err := h.factory.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer uow.Rollback(ctx)
+	defer uow.RollbackUnlessCommitted(ctx)
 
 	courier, err := uow.CourierRepository().Get(ctx, command.CourierID())
 	if err != nil {

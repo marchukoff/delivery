@@ -34,11 +34,11 @@ func (h *assignOrderCommandHandler) Handle(ctx context.Context, command AssignOr
 		return errs.NewValueIsRequiredError("command")
 	}
 
-	uow, err := h.factory()
+	uow, err := h.factory.New(ctx)
 	if err != nil {
 		return err
 	}
-	defer uow.Rollback(ctx)
+	defer uow.RollbackUnlessCommitted(ctx)
 
 	order, err := uow.OrderRepository().GetFirstInCreatedStatus(ctx)
 	if err != nil {

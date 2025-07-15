@@ -52,7 +52,7 @@ func NewCourier(name string, speed int, location kernel.Location) (*Courier, err
 
 func RestoreCourier(id uuid.UUID, name string, speed int, location kernel.Location, places []*StoragePlace) *Courier {
 	return &Courier{
-		baseAggregate: ddd.NewBaseAggregate(uuid.New()),
+		baseAggregate: ddd.NewBaseAggregate(id),
 		name:          name,
 		speed:         speed,
 		location:      location,

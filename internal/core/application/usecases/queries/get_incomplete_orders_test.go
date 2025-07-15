@@ -23,15 +23,17 @@ func Test_GetIncompleteOrdersQuery(t *testing.T) {
 	ctx, db, err := setupTest(t)
 	assert.NoError(err)
 
-	uowf := postgres.NewUnitOfWorkFactory(db)
-	uow, err := uowf()
+	uowf, err := postgres.NewUnitOfWorkFactory(db)
+	assert.NoError(err)
+
+	uow, err := uowf.New(ctx)
 	assert.NoError(err)
 
 	order, err := order.NewOrder(uuid.New(), kernel.NewRandomLocation(), 1)
 	assert.NoError(err)
 
-	err = uow.OrderRepository().Add(ctx, order)
-	assert.NoError(err)
+	uow.Begin(ctx)
+	assert.NoError(uow.OrderRepository().Add(ctx, order))
 	assert.NoError(uow.Commit(ctx))
 
 	query, err := NewGetIncompleteOrdersQuery()
