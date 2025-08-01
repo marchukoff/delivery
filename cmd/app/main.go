@@ -45,6 +45,7 @@ func main() {
 	cr := cmd.NewCompositionRoot(cfg, db)
 	defer cr.CloseAll()
 	startJobs(cr, context.TODO()) // TODO: move to closers
+	startKafkaConsumer(cr)
 	startWebServer(cr, cfg.HttpPort)
 }
 
@@ -268,6 +269,14 @@ func startJobs(cr *cmd.CompositionRoot, ctx context.Context) {
 					log.Printf("ERROR: handle command MoveCouriersCommand: %v", err)
 				}
 			}
+		}
+	}()
+}
+
+func startKafkaConsumer(compositionRoot *cmd.CompositionRoot) {
+	go func() {
+		if err := compositionRoot.NewBasketConsumer().Consume(); err != nil {
+			log.Fatalf("ERROR: kafka consumer got an error: %v", err)
 		}
 	}()
 }

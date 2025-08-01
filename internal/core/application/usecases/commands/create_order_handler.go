@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"errors"
 
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/core/ports"
@@ -37,6 +38,18 @@ func (h *createOrderCommandHandler) Handle(ctx context.Context, command CreateOr
 		return err
 	}
 	defer uow.RollbackUnlessCommitted(ctx)
+
+	orderAggregate, err := uow.OrderRepository().Get(ctx, command.OrderID())
+	if err != nil {
+		if errors.Is(err, errs.ErrObjectNotFound) {
+			return nil
+		}
+
+		return err
+	}
+	if orderAggregate != nil {
+		return nil
+	}
 
 	location, err := h.geoClient.GetGeolocation(ctx, command.Street())
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	kafkain "delivery/internal/adapters/in/kafka"
 	grpcout "delivery/internal/adapters/out/grpc"
 	"delivery/internal/adapters/out/postgres"
 	"delivery/internal/core/application/usecases/commands"
@@ -82,6 +83,21 @@ func (cr *CompositionRoot) NewGeoClient() ports.GeoClient {
 		cr.geoClient = client
 	})
 	return cr.geoClient
+}
+
+func (cr *CompositionRoot) NewBasketConsumer() kafkain.BasketConsumer {
+	consumer, err := kafkain.NewBasketConsumer(
+		[]string{cr.config.KafkaHost},
+		cr.config.KafkaConsumerGroup,
+		cr.config.KafkaBasketConfirmedTopic,
+		cr.NewCreateOrderCommandHandler(),
+	)
+	if err != nil {
+		log.Fatalf("ERROR: create BasketConsumer: %v", err)
+	}
+
+	cr.RegisterCloser(consumer)
+	return consumer
 }
 
 func (cr *CompositionRoot) RegisterCloser(c io.Closer) {

@@ -83,7 +83,7 @@ func (r *Repository) Get(ctx context.Context, ID uuid.UUID) (*order.Order, error
 		Preload(clause.Associations).
 		Find(&dto, ID)
 	if result.RowsAffected == 0 {
-		return nil, nil
+		return nil, errs.NewObjectNotFoundError("order.id", ID)
 	}
 
 	aggregate := DtoToDomain(dto)
