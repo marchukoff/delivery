@@ -15,3 +15,7 @@ service:
 	--go-grpc_out=./internal/generated/clients \
 	./api/proto/geo_service.proto
 .PHONY: service
+
+service2:
+	protoc --go_out=./internal/generated ./api/proto/basket_confirmed.proto
+.PHONY: service2
