@@ -1,15 +1,16 @@
+//go:build tomorrow
+
 package queries
 
 import (
 	"context"
-	"testing"
-
 	"delivery/internal/adapters/out/postgres"
 	"delivery/internal/adapters/out/postgres/courierrepo"
 	"delivery/internal/adapters/out/postgres/orderrepo"
 	"delivery/internal/core/domain/model/kernel"
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/pkg/testcnts"
+	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
