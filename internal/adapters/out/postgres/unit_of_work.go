@@ -22,7 +22,7 @@ func NewUnitOfWorkFactory(db *gorm.DB, mediatr ddd.Mediatr) (ports.UnitOfWorkFac
 		return nil, errs.NewValueIsRequiredError("mediatr")
 	}
 
-	return &unitOfWorkFactory{db: db}, nil
+	return &unitOfWorkFactory{db: db, mediatr: mediatr}, nil
 }
 
 type unitOfWorkFactory struct {
