@@ -19,3 +19,7 @@ service:
 service2:
 	protoc --go_out=./internal/generated ./api/proto/basket_confirmed.proto
 .PHONY: service2
+
+service3:
+	protoc --go_out=./internal/generated ./api/proto/order_status_changed.proto
+.PHONY: service3

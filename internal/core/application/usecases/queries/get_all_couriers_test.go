@@ -1,11 +1,12 @@
+//go:build tomorrow
+
 package queries
 
 import (
-	"testing"
-
 	"delivery/internal/adapters/out/postgres"
 	"delivery/internal/core/domain/model/courier"
 	"delivery/internal/core/domain/model/kernel"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

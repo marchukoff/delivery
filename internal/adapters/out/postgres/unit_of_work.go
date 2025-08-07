@@ -14,19 +14,24 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewUnitOfWorkFactory(db *gorm.DB) (ports.UnitOfWorkFactory, error) {
+func NewUnitOfWorkFactory(db *gorm.DB, mediatr ddd.Mediatr) (ports.UnitOfWorkFactory, error) {
 	if db == nil {
 		return nil, errs.NewValueIsRequiredError("db")
 	}
-	return &unitOfWorkFactory{db: db}, nil
+	if mediatr == nil {
+		return nil, errs.NewValueIsRequiredError("mediatr")
+	}
+
+	return &unitOfWorkFactory{db: db, mediatr: mediatr}, nil
 }
 
 type unitOfWorkFactory struct {
-	db *gorm.DB
+	db      *gorm.DB
+	mediatr ddd.Mediatr
 }
 
 func (f *unitOfWorkFactory) New(ctx context.Context) (ports.UnitOfWork, error) {
-	return NewUnitOfWork(f.db.WithContext(ctx))
+	return NewUnitOfWork(f.db.WithContext(ctx), f.mediatr)
 }
 
 type UnitOfWork struct {
@@ -37,14 +42,15 @@ type UnitOfWork struct {
 	//
 	orderRepository   ports.OrderRepository
 	courierRepository ports.CourierRepository
+	mediatr           ddd.Mediatr
 }
 
-func NewUnitOfWork(db *gorm.DB) (ports.UnitOfWork, error) {
+func NewUnitOfWork(db *gorm.DB, mediatr ddd.Mediatr) (ports.UnitOfWork, error) {
 	if db == nil {
 		return nil, errs.NewValueIsRequiredError("db")
 	}
 
-	uow := &UnitOfWork{db: db}
+	uow := &UnitOfWork{db: db, mediatr: mediatr}
 
 	orderRepo, err := orderrepo.NewRepository(uow)
 	if err != nil {
@@ -101,6 +107,10 @@ func (u *UnitOfWork) Commit(ctx context.Context) error {
 		return err
 	}
 
+	if err := u.publishDomainEvents(ctx); err != nil {
+		return err
+	}
+
 	u.committed = true
 	u.clearTx()
 	return nil
@@ -119,4 +129,18 @@ func (u *UnitOfWork) clearTx() {
 	u.tx = nil
 	u.trackedAggregates = nil
 	u.committed = false
+}
+
+func (u *UnitOfWork) publishDomainEvents(ctx context.Context) error {
+	for _, aggregate := range u.trackedAggregates {
+		for _, event := range aggregate.GetDomainEvents() {
+			err := u.mediatr.Publish(ctx, event)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+		}
+		aggregate.ClearDomainEvents()
+	}
+	return nil
 }

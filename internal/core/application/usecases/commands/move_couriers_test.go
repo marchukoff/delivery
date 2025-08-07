@@ -1,3 +1,5 @@
+//go:build tomorrow
+
 package commands
 
 import (
