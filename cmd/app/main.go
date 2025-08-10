@@ -18,6 +18,7 @@ import (
 	"delivery/internal/core/domain/services"
 	"delivery/internal/generated/servers"
 	"delivery/internal/pkg/errs"
+	"delivery/internal/pkg/outbox"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -226,6 +227,11 @@ func mustAutoMigrate(db *gorm.DB) {
 	err = db.AutoMigrate(&orderrepo.OrderDTO{})
 	if err != nil {
 		log.Fatalf("ERROR: automigrate order: %v", err)
+	}
+
+	err = db.AutoMigrate(&outbox.Message{})
+	if err != nil {
+		log.Fatalf("ERROR: automigrate outbox: %v", err)
 	}
 }
 
