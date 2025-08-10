@@ -3,20 +3,25 @@ package cmd
 import (
 	"io"
 	"log"
+	"reflect"
 	"sync"
 
 	kafkain "delivery/internal/adapters/in/kafka"
 	grpcout "delivery/internal/adapters/out/grpc"
 	kafkaout "delivery/internal/adapters/out/kafka"
 	"delivery/internal/adapters/out/postgres"
+	"delivery/internal/adapters/out/postgres/outboxrepo"
 	"delivery/internal/core/application/eventhandlers"
 	"delivery/internal/core/application/usecases/commands"
 	"delivery/internal/core/application/usecases/queries"
 	"delivery/internal/core/domain/model/order"
 	"delivery/internal/core/domain/services"
 	"delivery/internal/core/ports"
+	"delivery/internal/jobs"
 	"delivery/internal/pkg/ddd"
+	"delivery/internal/pkg/outbox"
 
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 )
 
@@ -128,6 +133,38 @@ func (cr *CompositionRoot) NewMediatrWithSubscriptions() ddd.Mediatr {
 	mediatr := ddd.NewMediatr()
 	mediatr.Subscribe(cr.NewOrderCompletedDomainEventHandler(), order.NewEmptyCompletedDomainEvent())
 	return mediatr
+}
+
+func (cr *CompositionRoot) NewOutboxRepository() outboxrepo.OutboxRepository {
+	repository, err := outboxrepo.NewRepository(cr.db)
+	if err != nil {
+		log.Fatalf("ERROR: cannot create OutboxRepository: %v", err)
+	}
+
+	return repository
+}
+
+func (cr *CompositionRoot) NewEventRegistry() outbox.EventRegistry {
+	registry, err := outbox.NewEventRegistry()
+	if err != nil {
+		log.Fatalf("cannot create EventRegistry: %v", err)
+	}
+
+	err = registry.RegisterDomainEvent(reflect.TypeOf(order.CompletedDomainEvent{}))
+	if err != nil {
+		log.Fatalf("cannot register domain event: %v", err)
+	}
+
+	return registry
+}
+
+func (cr *CompositionRoot) NewOutboxJob() cron.Job {
+	job, err := jobs.NewOutboxJob(cr.NewOutboxRepository(), cr.NewEventRegistry(), cr.NewMediatrWithSubscriptions())
+	if err != nil {
+		log.Fatalf("ERROR: cannot create OutboxJob: %v", err)
+	}
+
+	return job
 }
 
 func (cr *CompositionRoot) RegisterCloser(c io.Closer) {
