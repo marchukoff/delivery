@@ -9,6 +9,7 @@ import (
 	"delivery/internal/core/ports"
 	"delivery/internal/pkg/ddd"
 	"delivery/internal/pkg/errs"
+	"delivery/internal/pkg/outbox"
 
 	"github.com/labstack/gommon/log"
 	"gorm.io/gorm"
@@ -133,14 +134,20 @@ func (u *UnitOfWork) clearTx() {
 
 func (u *UnitOfWork) publishDomainEvents(ctx context.Context) error {
 	for _, aggregate := range u.trackedAggregates {
-		for _, event := range aggregate.GetDomainEvents() {
-			err := u.mediatr.Publish(ctx, event)
+		outboxEvents, err := outbox.EncodeDomainEvents(aggregate.GetDomainEvents())
+		if err != nil {
+			return err
+		}
+
+		if len(outboxEvents) > 0 {
+			err = u.tx.WithContext(ctx).Create(&outboxEvents).Error
 			if err != nil {
-				log.Error(err)
-				continue
+				return err
 			}
 		}
+
 		aggregate.ClearDomainEvents()
 	}
+
 	return nil
 }

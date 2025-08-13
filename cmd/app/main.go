@@ -18,12 +18,14 @@ import (
 	"delivery/internal/core/domain/services"
 	"delivery/internal/generated/servers"
 	"delivery/internal/pkg/errs"
+	"delivery/internal/pkg/outbox"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
 	oam "github.com/oapi-codegen/echo-middleware"
+	"github.com/robfig/cron/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -45,6 +47,7 @@ func main() {
 	cr := cmd.NewCompositionRoot(cfg, db)
 	defer cr.CloseAll()
 	startJobs(cr, context.TODO()) // TODO: move to closers
+	startCron(cr)
 	startKafkaConsumer(cr)
 	startWebServer(cr, cfg.HttpPort)
 }
@@ -227,6 +230,11 @@ func mustAutoMigrate(db *gorm.DB) {
 	if err != nil {
 		log.Fatalf("ERROR: automigrate order: %v", err)
 	}
+
+	err = db.AutoMigrate(&outbox.Message{})
+	if err != nil {
+		log.Fatalf("ERROR: automigrate outbox: %v", err)
+	}
 }
 
 func startJobs(cr *cmd.CompositionRoot, ctx context.Context) {
@@ -279,4 +287,15 @@ func startKafkaConsumer(compositionRoot *cmd.CompositionRoot) {
 			log.Fatalf("ERROR: kafka consumer got an error: %v", err)
 		}
 	}()
+}
+
+func startCron(compositionRoot *cmd.CompositionRoot) {
+	c := cron.New()
+
+	_, err := c.AddJob("@every 2s", compositionRoot.NewOutboxJob())
+	if err != nil {
+		log.Fatalf("ERROR: cannot add cron job: %v", err)
+	}
+
+	c.Start()
 }
